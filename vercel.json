@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/sms.py": {
-      "runtime": "python@3.12",
+      "runtime": "python3.12",
       "maxDuration": 10
     }
   },
