@@ -1,0 +1,14 @@
+{
+  "functions": {
+    "api/sms.py": {
+      "runtime": "python3.12",
+      "maxDuration": 10
+    }
+  },
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/api/sms.py"
+    }
+  ]
+}
