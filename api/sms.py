@@ -96,7 +96,6 @@ APIS = [
     }
 ]
 
-# ==================== HELPER FUNCTIONS ====================
 def validate_phone(phone):
     """Validate Bangladeshi phone number (11 digits starting with 01)"""
     digits = re.sub(r'\D', '', phone)
@@ -112,7 +111,7 @@ def validate_phone(phone):
 def send_request(api, phone_formats):
     """Send a single request to the given API"""
     try:
-        # Build URL with query parameters
+        # Prepare URL with query parameters
         url = api["url"]
         params = {}
         if "params" in api:
@@ -134,19 +133,19 @@ def send_request(api, phone_formats):
 
         # Make request
         if api["method"] == "GET":
-            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp = requests.get(url, params=params, headers=headers, timeout=5)
         else:  # POST
             if json_data:
-                resp = requests.post(url, params=params, json=json_data, headers=headers, timeout=10)
+                resp = requests.post(url, params=params, json=json_data, headers=headers, timeout=5)
             elif form_data:
-                resp = requests.post(url, params=params, data=form_data, headers=headers, timeout=10)
+                resp = requests.post(url, params=params, data=form_data, headers=headers, timeout=5)
             else:
-                resp = requests.post(url, params=params, headers=headers, timeout=10)
+                resp = requests.post(url, params=params, headers=headers, timeout=5)
 
         return {
             "api": api["name"],
             "status": resp.status_code,
-            "success": resp.status_code < 400 or resp.status_code == 429
+            "success": resp.status_code < 400 or resp.status_code == 429  # 429 means rate limited but likely OTP sent
         }
     except Exception as e:
         return {
@@ -157,12 +156,13 @@ def send_request(api, phone_formats):
         }
 
 
-# ==================== VERCEL HANDLER ====================
 class handler(BaseHTTPRequestHandler):
+    """Vercel Python Runtime Handler"""
+
     def do_GET(self):
-        # Parse query parameters
         parsed = urllib.parse.urlparse(self.path)
         query = urllib.parse.parse_qs(parsed.query)
+
         number = query.get('number', [None])[0]
         requests_str = query.get('requests', [None])[0]
 
@@ -176,10 +176,10 @@ class handler(BaseHTTPRequestHandler):
 
         try:
             req_count = int(requests_str)
-            if req_count < 1 or req_count > 100:
+            if req_count < 1 or req_count > 10:  # limit to avoid timeout
                 self.send_response(400)
                 self.end_headers()
-                self.wfile.write(json.dumps({"error": "requests must be between 1 and 100"}).encode())
+                self.wfile.write(json.dumps({"error": "requests must be between 1 and 10"}).encode())
                 return
         except ValueError:
             self.send_response(400)
@@ -214,7 +214,6 @@ class handler(BaseHTTPRequestHandler):
                     "status": result.get("status")
                 })
 
-        # Build response
         response = {
             "number": phone_formats["full"],
             "requests_per_api": req_count,
@@ -231,5 +230,4 @@ class handler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(response, indent=2).encode())
 
     def do_POST(self):
-        # Optionally handle POST if needed, but for simplicity we use GET
         self.do_GET()
